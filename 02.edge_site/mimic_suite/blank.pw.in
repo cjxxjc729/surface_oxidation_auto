@@ -1,0 +1,111 @@
+&CONTROL
+                 calculation = 'relax' ,
+                restart_mode = 'from_scratch' ,
+                      outdir = './tmp' ,
+                  pseudo_dir = '/public1/home/sc50649/pseudo' ,
+                      prefix = 'blank' ,
+                      nstep  = 600,
+                 !   lfcpdyn = .true.,
+                 !   lfcpopt = .true.,
+                     tprnfor = .true.,
+                  max_seconds = 7200,
+ /
+ &SYSTEM
+                       ibrav = 14,
+                   celldm(1) = 10.97193806228808600953,
+                   celldm(2) = 2.46959232531303284476,
+                   celldm(3) = 3.49024302027178312464,
+                   celldm(4) = 2.67949e-08,
+                   celldm(5) = 2.67949e-08,
+                   celldm(6) = 0.155455,
+                         nat = 45,
+                        ntyp = 3,
+                     ecutwfc = 30,
+                     ecutrho = 300,
+                 occupations = 'smearing' ,  vdw_corr = 'DFT-D3',
+                     degauss = 0.01,
+                    smearing = 'methfessel-paxton' ,
+                       nspin = 2,
+                     ! nosym =.true.,
+       !  assume_isolated='esm', esm_bc='bc3'
+    !                 fcp_mu =  -0.35294117647058823529411764705882,
+starting_magnetization(1) = 0.5,
+starting_magnetization(2) = 0.5,
+starting_magnetization(3) = 0.5,
+/
+ &ELECTRONS
+            electron_maxstep = 70,
+                    conv_thr = 1.D-3,
+          scf_must_converge=.false.,
+                 mixing_beta = 0.4,
+                 mixing_mode = 'local-TF' ,
+        !         startingpot = 'file',
+        !         startingwfc = 'file',
+ /
+ &IONS
+      !           ion_dynamics = 'verlet' ,
+     !             tempw = 300.D0,
+    !    ion_temperature = 'rescale-v',
+   !              nraise =5 ,
+   !  pot_extrapolation = 'second_order',
+   !  wfc_extrapolation = 'second_order',
+                ion_dynamics = 'bfgs' ,
+ /
+! &CELL
+! cell_dynamics='bfgs',
+! /
+ATOMIC_SPECIES
+Bi      208.98038        Bi.pbe-dn-rrkjus_psl.0.2.2.UPF
+C     12.0100    C.pbe-rrkjus.UPF
+O     15.9994      O.pbe-rrkjus.UPF
+ATOMIC_POSITIONS crystal
+O -0.03231 0.85294 -0.00000     0   0   0
+Bi 0.70474 0.62608 0.002350000     0   0   0
+O 0.17316 0.70834 0.014050000     0   0   0
+C 0.13887 0.79768 0.026750000     0   0   0
+Bi 0.58516 0.93759 0.046650000     0   0   0
+O 0.55535 0.51523 0.057690000     0   0   0
+O 0.04610 0.53931 0.061110000     0   0   0
+O 0.27504 0.83359 0.066470000     0   0   0
+O 0.28336 0.33307 0.068270000     0   0   0
+Bi 0.02042 0.10621 0.070630000     0   0   0
+O 0.48884 0.18847 0.082320000     0   0   0
+C 0.45454 0.27781 0.095030000     0   0   0
+Bi 0.90083 0.41771 0.114920000     0   0   0
+O 0.87102 0.99536 0.125960000     0   0   0
+O 0.36178 0.01944 0.129390000     0   0   0
+O 0.59072 0.31372 0.134750000     0   0   0
+O 0.59904 0.81320 0.136550000     0   0   0
+Bi 0.33609 0.58634 0.138900000     0   0   0
+O 0.80452 0.66860 0.150600000     0   0   0
+C 0.77022 0.75794 0.163300000     0   0   0
+Bi 0.21651 0.89784 0.183190000
+O 0.18670 0.47549 0.194240000
+O 0.67745 0.49957 0.197660000
+O 0.90639 0.79385 0.203020000
+O -0.08529 0.29333 0.204820000
+Bi 0.65177 0.06647 0.207170000
+O 0.12019 0.14873 0.218870000
+C 0.08589 0.23807 0.231570000
+Bi 0.53218 0.37797 0.251470000
+O 0.50237 0.95562 0.262510000
+O 0.99313 0.97970 0.265930000
+O 0.22207 0.27398 0.271290000
+O 0.23039 0.77346 0.273090000
+Bi 0.96745 0.54660 0.275440000
+O 0.43587 0.62886 0.287140000
+C 0.40157 0.71820 0.299850000
+Bi 0.84786 0.85810 0.319740000
+O 0.81805 0.43575 0.330780000
+O 0.30881 0.45983 0.334200000
+O 0.53775 0.75411 0.339560000
+O 0.54607 0.25359 0.341360000
+Bi 0.28312 0.02673 0.343720000
+O 0.75154 0.10899 0.355410000
+C 0.71724 0.19833 0.368120000
+O 0.85342 0.23424 0.407840000
+K_POINTS gamma
+!CONSTRAINTS
+!1  (50)  ! 50 is optional
+!'distance' 37 39
+

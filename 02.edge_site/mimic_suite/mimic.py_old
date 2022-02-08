@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+
+filenamea=input("enter the originial filename: ")
+filenameb=input("enter the goal filename: ")
+#filenamea="NO2-minus.cif"
+#filenameb="NO2.cif"
+
+from ase.io import write
+from ase.io import read
+from ase import neighborlist
+from ase import geometry 
+import numpy as np
+from make_individual_cor import *
+
+#---------------------------------begein of atom a-------------------------
+atomsa=read(filenamea)
+atomsb=read(filenameb)
+set_cutoff=5
+atm_nla=gen_atm_nl(atomsa,set_cutoff)
+x_veca,y_veca,z_veca,atm_cla=gen_xyz_vec_and_atm_cl(atomsa,atm_nla)
+print("atomic coordination genrates (x_vec y_vec z_vec) for molecule a")
+Dija=gen_Dij(atomsa,atm_nla,x_veca,y_veca,z_veca)
+#-------------------------------end of atom a------------------------------
+#-------------------------------begin of atom b------------------------------
+atm_nlb=gen_atm_nl(atomsb,set_cutoff)
+x_vecb,y_vecb,z_vecb,atm_cla=gen_xyz_vec_and_atm_cl(atomsb,atm_nlb)
+print("atomic coordination genrates (x_vec y_vec z_vec) for molecule b")
+Dijb=gen_Dij(atomsb,atm_nlb,x_vecb,y_vecb,z_vecb)
+#-------------------------------end of atom b------------------------------
+#------------------------------print properties------------------------
+
+#------------------------------end print properties-------------------
+#-----------------------------begin merge Dijb and Dija -------------
+Dija_merged=merge_Dij(Dija,Dijb,atomsa,atomsb)
+#print(len(Dijb_merged[3]))
+#print(len(Dijb[3]))
+#print(len(Dija[15]))
+#-----------------------------end merge Dijb and Dija-----------------
+extraposa=gen_extrapos_from_Dij_assby_atoma(Dija_merged,atomsa)
+#extraposb=gen_extrapos_from_Dij_assby_atoma(Dijb,atomsb)
+
+print(len(extraposa.get_positions()))
+#write('atomsb_before.xyz', extraposb)
+geometry.get_duplicate_atoms(extraposa, cutoff=0.65, delete=True)
+print(len(extraposa.get_positions()))
+
+write('atomsb.xyz', extraposa)
+
+
+#print(Dijbele[i])
+#print("Dij generates. [i,1/Rij,xij/Rij^2,yij/Rij^2,zij/Rij^2,j] ")
+#print(Dija[15])
+#print("-------")
+#print(Dijb[3])
+
+#print("Dija_before merge")
+#print(Dija[15])
+#print("same indx")
+#same_index,diff_index,out_Dija=same_and_diff(15,3,Dija,Dijb,0.1)
+#print(same_index)
+#print(Dija[15][25][0])
+#print(Dija[15][25][1])
+#print(atomsa.get_positions()[21])
+#print("--------------")
+#print(Dijb[3][12][0])
+#print(Dijb[3][12][1])
+#print(atomsb.get_positions()[6])
+#print(len(same_index))
+#print("diff")
+##print(len(diff_index))
+#print("Dija_after merge")
+#print(out_Dija)
+
+#same_index,diff_index,Dijb_can_be_used=same_and_diff(19,7,Dija,Dijb,0.01)
+#print(same_index)
+#PRINT_Dij_vector(Dija,19,9)
+#print("--------")
+#PRINT_Dij_vector(Dijb,7,9)
+
+
