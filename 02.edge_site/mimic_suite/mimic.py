@@ -16,15 +16,21 @@ from mimic_functions import *
 
 atomsa=read(filenamea)
 atomsb=read(filenameb)
-set_cutoff=5
-atm_nla,M_atomsa_nl=gen_M_atoms_nl(atomsa,set_cutoff)
-atm_nlb,M_atomsb_nl=gen_M_atoms_nl(atomsb,set_cutoff)
+set_cutoffs=[2,3,4,5,6]
+similarity_score_threshold=1.5
 
-for atm_id_a in range(len(atomsa)):
-  for atm_id_b in range(len(atomsb)):
-    Dija,symbolsa,e_veca=gen_Dij(M_atomsa_nl[atm_id_a])
-    Dijb,symbolsb,e_vecb=gen_Dij(M_atomsb_nl[atm_id_b])
-
-    score=score_the_similarity(Dija,symbolsa,Dijb,symbolsb)
-    print(str(atm_id_a)+" vs "+str(atm_id_b)+"score="+str(score))
-
+for set_cutoff in set_cutoffs:
+  atm_nla,M_atomsa_nl=gen_M_atoms_nl(atomsa,set_cutoff)
+  atm_nlb,M_atomsb_nl=gen_M_atoms_nl(atomsb,set_cutoff)
+  print("for cutoff of: "+str(set_cutoff) )
+  for atm_id_a in range(len(atomsa)):
+    for atm_id_b in range(len(atomsb)):
+      Dija,symbolsa,e_vec_a=gen_Dij(M_atomsa_nl[atm_id_a])
+      Dijb,symbolsb,e_vec_b=gen_Dij(M_atomsb_nl[atm_id_b])
+      score=score_the_similarity(Dija,symbolsa,Dijb,symbolsb)
+      if score<similarity_score_threshold:
+        print(str(atm_id_a+1)+atomsa.get_chemical_symbols()[atm_id_a]+" vs "+str(atm_id_b+1)+atomsb.get_chemical_symbols()[atm_id_b]+": similarity score ="+str(score))
+        new_atoms=merge_based_on_individual_similar_part(atomsa,M_atomsa_nl[atm_id_a],e_vec_a,atomsb,M_atomsb_nl[atm_id_b],e_vec_b)
+        #clored_atomsb_nl=switch_symbol_to_HHeli(M_atomsb_nl[atm_id_b])
+        #new_atoms=merge_based_on_individual_similar_part(M_atomsa_nl[atm_id_a],M_atomsa_nl[atm_id_a],e_vec_a,clored_atomsb_nl,clored_atomsb_nl,e_vec_b)
+        write("./merged_strs/new_atoms_merge"+str(atm_id_a+1)+"_"+str(atm_id_b+1)+"_cutoff_"+str(set_cutoff)+".cif",new_atoms)
