@@ -9,14 +9,42 @@ from ase import neighborlist
 from ase import Atoms
 
 
-def gen_atoms_for_each_atom(atoms,set_cutoff):
+
+def gen_e_vec(atoms):
+  #------------------------beginiing of generation of x_vec and nei_cl----------------------
+  e_vec=[]
+  if len(atoms)==1:
+    ei1=[1,0,0]
+    ei2=[0,1,0]
+    ei3=[0,0,1]
+  elif len(atoms)==2:
+    Ria=atoms.get_distance(0,1,mic=True,vector=True)   #notice neibor_id_list_of_atm_id[0] is itself !
+    ei1=Ria/np.linalg.norm(Ria)
+    Rib=[0,1,1]
+    ei2s=Rib-np.dot(np.dot(Rib,ei1),ei1)
+    ei2=ei2s/np.linalg.norm(ei2)
+    ei3=np.cross(ei1,ei2)
+  else:
+    Ria=atoms.get_distance(0,1,mic=True,vector=True)
+    ei1=Ria/np.linalg.norm(Ria)
+    Rib=atoms.get_distance(0,2,mic=True,vector=True)
+    ei2s=Rib-np.dot(np.dot(Rib,ei1),ei1)
+    ei2=ei2s/np.linalg.norm(ei2s)
+    ei3=np.cross(ei1,ei2)
+  e_vec=[ei1,ei2,ei3]
+  return e_vec
+
+
+
+
+def gen_M_atoms_nl(atoms,set_cutoff):
   #this funcitonal will generate lists of the neighbor atoms (within radii of set_cutoff) for all the atoms in file atoms. And the list will be sorted.
   cutOff = neighborlist.natural_cutoffs(atoms)
   for i in range(len(cutOff)):
     cutOff[i]=set_cutoff/2   
   nl = neighborlist.NeighborList(cutOff, skin=0, bothways=True)
   nl.update(atoms)
-  atoms_for_each_atom={}
+  M_atoms_nl={}
   atm_nl={}
   for atm_id in range(len(atoms)):
     indices, offsets = nl.get_neighbors(atm_id)
@@ -25,8 +53,8 @@ def gen_atoms_for_each_atom(atoms,set_cutoff):
     ll=[]
     for i in range(len(neibor_id_list_of_atm_id)):
       ll.append(neibor_id_list_of_atm_id[i].astype('int64'))
-    atoms_for_each_atom[atm_id]=atoms[ll]
-  return atoms_for_each_atom
+    M_atoms_nl[atm_id]=atoms[ll]
+  return atm_nl,M_atoms_nl
 
 
 def sort_the_indices(atoms,i,indices):
@@ -91,8 +119,40 @@ def gen_e_vec_beta(atoms):
   return e_vec
 
 
-def gen_Dij(atoms):
+
+
+def gen_Dij_dot(atoms):
   e_vec=gen_e_vec(atoms)
+  vec_basis=e_vec
+  Dij=[]
+  symbols=[]
+  for atm_id in range(len(atoms)):
+    if atm_id<=2:
+      Dij=np.append(Dij,[0,0,0,0])
+      symbols.append(atoms.get_chemical_symbols()[atm_id])
+    else:
+      Rij=atoms.get_distance(0,atm_id,mic=True)
+      Rij_vec=atoms.get_distance(0,atm_id,mic=True,vector=True)
+
+
+      Rij_vec=np.mat(Rij_vec)
+      #how to measure cor?
+      #[ei1,ei2,ei3]*[xij;yij;zij]=[Rij_vec]'  3x3  3x1  3x1
+      #=>[xij;yij;zij]=[x_vec,y_vec,z_vec]^-1*[Rij_vec]'
+      xij_yij_zij=np.linalg.inv(np.transpose(vec_basis))*np.transpose(Rij_vec)
+      xij_yij_zij=np.array(xij_yij_zij)
+      xij= xij_yij_zij[0][0]
+      yij= xij_yij_zij[1][0]
+      zij= xij_yij_zij[2][0]
+      Dij=np.append(Dij,[1/Rij,xij/(Rij**2),yij/(Rij**2),zij/(Rij**2)])
+      symbols.append(atoms.get_chemical_symbols()[atm_id])
+  #if len(Dij)>=1:
+  Dij=Dij.reshape(-1,4)
+  return Dij,symbols,e_vec
+
+
+def gen_Dij(atoms):
+  e_vec=gen_e_vec_beta(atoms)
   vec_basis=e_vec
   Dij=[]
   symbols=[]
@@ -120,15 +180,130 @@ def gen_Dij(atoms):
   Dij=Dij.reshape(-1,4)
   return Dij,symbols,e_vec
 
-def score_the_similarity(atomsa,atomsb):
-  Dija,symbolsa,e_vec_a=gen_Dij(atomsa)
-  Dijb,symbolsb,e_vec_b=gen_Dij(atomsb)
-  score=score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb)
+
+
+
+def score_the_similarity_dot(Dija,symbolsa,Dijb,symbolsb):
+
+  if len(Dija)!=len(Dijb) or symbolsa[0]!=symbolsb[0] or len(Dija)<=5 or len(Dijb)<=5 :
+    print("length of Dij is not match or central element dont match, or neibour list too shor <2 , skip")
+    score=100
+  else:
+    speciesa=np.unique(symbolsa)
+    speciesb=np.unique(symbolsb)    
+    if len(speciesa)!=len(speciesb):
+      print("specie number dont match, skip")
+      score=100
+    else:
+      for i in range(len(speciesa)):
+        if speciesa[i]!=speciesb[i]:
+          print("specie kind dont match, skip")
+          score=100
+          break
+      Dija_ele={}
+      Dijb_ele={}
+      score=0
+      break2=False
+      for specie in speciesa:
+        Dija_ele[specie]=[]
+        Dijb_ele[specie]=[]
+        for i in range(len(symbolsa)):
+          print(symbolsa)
+          if symbolsa[i]==specie:
+            Dija_ele[specie]=np.append(Dija_ele[specie],Dija[i])
+          if symbolsb[i]==specie:
+            Dijb_ele[specie]=np.append(Dijb_ele[specie],Dijb[i])
+          if len(Dija_ele[specie])!=len(Dijb_ele[specie]):
+            print("specie number dont match,skip")
+            score=100
+            break2=True
+            break
+        if (break2):
+          score=100
+          break
+        else:
+          #print("Dija_ele[specie="+specie)
+          #print(Dija_ele[specie])
+          #print("Dijb_ele[specie="+specie)
+          #print(Dijb_ele[specie])
+          diff_Dijab=Dijb_ele[specie]-Dija_ele[specie]
+          #print(diff_Dijab)
+          score_added=np.dot(diff_Dijab,diff_Dijab)
+          #print("score_added")
+          #print(score_added)
+          score=score+score_added
 
   return score
 
+def score_the_similarity_dot2(Dija,symbolsa,Dijb,symbolsb):
+  
+  if len(Dija)!=len(Dijb) or symbolsa[0]!=symbolsb[0]:
+    #print("length of Dij is not match or central element dont match , skip")
+    score=100
+  else:
+    speciesa=np.unique(symbolsa)
+    speciesb=np.unique(symbolsb)
+    if len(speciesa)!=len(speciesb):
+      print("specie number dont match, skip")
+      score=100
+    else:
+      for i in range(len(speciesa)):
+        if speciesa[i]!=speciesb[i]:
+          print("specie kind dont match, skip")
+          score=100
+          break
+      Dija_ele={}
+      Dijb_ele={}
+      score=0
+      break2=False
+      scores=[]
+      for specie in speciesa:
+        Dija_ele[specie]=[]
+        Dijb_ele[specie]=[]
+        for i in range(len(symbolsa)):
+          #print(symbolsa)
+          if symbolsa[i]==specie:
+            Dija_ele[specie]=np.append(Dija_ele[specie],Dija[i])
+          if symbolsb[i]==specie:
+            Dijb_ele[specie]=np.append(Dijb_ele[specie],Dijb[i])
+          if len(Dija_ele[specie])!=len(Dijb_ele[specie]):
+            print("specie number dont match,skip")
+            score=100
+            break2=True
+            break
+        if (break2):
+          score=100
+          break
+        else:
+          #print("Dija_ele[specie="+specie)
+          #print(Dija_ele[specie])
+          #print("Dijb_ele[specie="+specie)
+          #print(Dijb_ele[specie])
+          print("we now do the calculation")
+          Dija_ele[specie]=Dija_ele[specie].reshape(-1,4)
+          Dijb_ele[specie]=Dijb_ele[specie].reshape(-1,4)
+          A=[]
+          for j in range(len(Dija_ele[specie])):
+            dis=np.linalg.norm(Dija_ele[specie][j]-Dijb_ele[specie][j])
+            dis=dis**2
+            A=np.append(A,[j,dis])
+          A=A.reshape(-1,2)
+          A=A[np.argsort(A[:,1])]
+          #print(specie)
+          #print(A)
+          
+          score=A[len(A)-1,1]
+          
+          scores.append(score)
+      if len(scores)>0:
+        #print(scores)
+        score=max(scores)
+        #print(score)
+    
+  return score
 
-def score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb):
+
+def score_the_similarity(Dija,symbolsa,Dijb,symbolsb):
 
   if len(Dija)<len(Dijb) or symbolsa[0]!=symbolsb[0]:
     #print("length of Dij is not match or central element dont match , skip")
@@ -161,10 +336,7 @@ def score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb):
 
 
 
-def merge_based_on_individual_similar_part(atomsa,atomsa_nl,atomsb,atomsb_nl):
-  e_vec_a=gen_e_vec(atomsa_nl)
-  e_vec_b=gen_e_vec(atomsb_nl)
-
+def merge_based_on_individual_similar_part(atomsa,atomsa_nl,e_vec_a,atomsb,atomsb_nl,e_vec_b):
   impointb=atomsb_nl.get_positions()[0]
   impoint_ref=atomsa_nl.get_positions()[0]
   e_vec_ref=e_vec_a
@@ -234,14 +406,6 @@ def switch_symbol_to_HHeli(atoms):
   new_atoms=atoms
   new_atoms.set_chemical_symbols(symbols_switch)
   return new_atoms
-
-def get_the_max_dis_in_atoms(atoms):
-  A=[]
-  for atm_id in range(len(atoms)):
-    for atm_jd in range(atm_id+1,len(atoms)):
-      A.append(atoms.get_distance(atm_id,atm_jd))
-  max_dis=max(A)
-  return max_dis
 
 
 

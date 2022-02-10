@@ -1,0 +1,6 @@
+nline=$(cat $file | wc -l)
+nline_1=$(echo "$nline-1" | bc -l)
+nline_2=$(echo "$nline-2" | bc -l)
+sed -i "${nline}s/O/S/" $file
+sed -i "${nline_1}s/C/Si/" $file
+sed -i "${nline_2}s/O/S/" $file

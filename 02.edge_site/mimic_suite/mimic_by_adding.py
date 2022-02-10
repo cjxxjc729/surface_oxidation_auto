@@ -34,9 +34,14 @@ atoms_for_each_atomb=gen_atoms_for_each_atom(atomsb,set_cutoff)
 
 print("cutoff is: "+str(set_cutoff) )
 
-for atm_id_b in range(len(atomsb)):
-  print(atm_id_b)
-  score_b_ref=score_the_similarity(atoms_for_each_atomb[atm_id_b],atoms_for_each_atom_ref[2])
-  print(score_b_ref)
-  new_atoms=merge_based_on_individual_similar_part(atomsb,atoms_for_each_atomb[atm_id_b],atoms_ref,atoms_for_each_atom_ref[2])
-  write("./merged_strs/new_atoms_merge"+str(atm_id_b+1)+"_"+str(3)+"_cutoff_"+str(set_cutoff)+".cif",new_atoms)
+if 1>0:
+  for atm_id_a in range(len(atomsa)):
+    score_a_ref=score_the_similarity(atoms_for_each_atoma[atm_id_a],atoms_for_each_atom_ref[1])
+    #print(score_a_ref)
+    for atm_id_b in range(len(atomsb)):
+      score_b_ref=score_the_similarity(atoms_for_each_atomb[atm_id_b],atoms_for_each_atom_ref[2])
+      print(score_b_ref)
+      #if score_a_ref<similarity_score_threshold and score_b_ref<similarity_score_threshold:
+      print(str(atm_id_a+1)+atomsa.get_chemical_symbols()[atm_id_a]+" vs "+str(atm_id_b+1)+atomsb.get_chemical_symbols()[atm_id_b]+": similarity score ="+str(score))
+      new_atoms=merge_based_on_individual_similar_part(atomsa,atoms_for_each_atoma[atm_id_a],atomsb,atoms_for_each_atomb[atm_id_b])
+      write("./merged_strs/new_atoms_merge"+str(atm_id_a+1)+"_"+str(atm_id_b+1)+"_cutoff_"+str(set_cutoff)+".cif",new_atoms)

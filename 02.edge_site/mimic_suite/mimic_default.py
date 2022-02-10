@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-#filenamea=input("enter the atom file part A: ")
-#filenameb=input("enter the atom file part B : ")
-filenamea="NO2-minus.cif"
-filenameb="NO2-minus_rot.cif"
+filenamea=input("enter the atom file part A: ")
+filenameb=input("enter the atom file part B : ")
+#filenamea="../blank.cif"
+#filenameb="../CO2_ad.cif"
 
 from ase.io import write
 from ase.io import read
@@ -16,8 +16,8 @@ from mimic_functions import *
 
 atomsa=read(filenamea)
 atomsb=read(filenameb)
-set_cutoffs=[2,3,4,5,6]
-similarity_score_threshold=1.5
+set_cutoffs=[3,4]
+similarity_score_threshold=0.9
 
 for set_cutoff in set_cutoffs:
   atm_nla,M_atomsa_nl=gen_M_atoms_nl(atomsa,set_cutoff)
@@ -30,6 +30,8 @@ for set_cutoff in set_cutoffs:
       score=score_the_similarity(Dija,symbolsa,Dijb,symbolsb)
       if score<similarity_score_threshold:
         print(str(atm_id_a+1)+atomsa.get_chemical_symbols()[atm_id_a]+" vs "+str(atm_id_b+1)+atomsb.get_chemical_symbols()[atm_id_b]+": similarity score ="+str(score))
+        #clored_atomsb_nl=switch_symbol_to_HHeli(M_atomsb_nl[atm_id_b])
+        #new_atoms=merge_based_on_individual_similar_part(atomsa,M_atomsa_nl[atm_id_a],e_vec_a,atomsb,clored_atomsb_nl,e_vec_b)
         new_atoms=merge_based_on_individual_similar_part(atomsa,M_atomsa_nl[atm_id_a],e_vec_a,atomsb,M_atomsb_nl[atm_id_b],e_vec_b)
         #clored_atomsb_nl=switch_symbol_to_HHeli(M_atomsb_nl[atm_id_b])
         #new_atoms=merge_based_on_individual_similar_part(M_atomsa_nl[atm_id_a],M_atomsa_nl[atm_id_a],e_vec_a,clored_atomsb_nl,clored_atomsb_nl,e_vec_b)
