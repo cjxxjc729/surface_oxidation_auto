@@ -4,6 +4,7 @@ import numpy as np
 from ase.io import write
 from ase.io import read
 #from ase.geometry.analysis import Analysis
+from ase.geometry import get_duplicate_atoms
 from ase import neighborlist
 
 from ase import Atoms
@@ -41,8 +42,10 @@ def sort_the_indices(atoms,i,indices):
   neibor_indices_sort_by_dis=A
   return neibor_indices_sort_by_dis
 
-def gen_e_vec(atoms):
+def gen_e_vec(atoms,mode=0):
   #------------------------beginiing of generation of x_vec and nei_cl----------------------
+  mode_dependent_list=[[2,3],[2,4],[3,4],[2,5],[3,5],[4,5]]
+  mode_dependent_list=np.array(mode_dependent_list)
   e_vec=[]
   if len(atoms)==1 or len(atoms)==2:
     ei1=[1,0,0]
@@ -56,12 +59,15 @@ def gen_e_vec(atoms):
     ei2=ei2s/np.linalg.norm(ei2s)
     ei3=np.cross(ei1,ei2)
   else:
-    Ria=atoms.get_distance(0,2,mic=True,vector=True)
+    id1=min([mode_dependent_list[mode,0],len(atoms)-2])
+    id2=min([mode_dependent_list[mode,1],len(atoms)-1])
+    Ria=atoms.get_distance(0,id1,mic=True,vector=True)
     ei1=Ria/np.linalg.norm(Ria)
-    Rib=atoms.get_distance(0,3,mic=True,vector=True)
+    Rib=atoms.get_distance(0,id2,mic=True,vector=True)
     ei2s=Rib-np.dot(np.dot(Rib,ei1),ei1)
     ei2=ei2s/np.linalg.norm(ei2s)
     ei3=np.cross(ei1,ei2)
+
   e_vec=[ei1,ei2,ei3]
   return e_vec
 
@@ -91,8 +97,8 @@ def gen_e_vec_beta(atoms):
   return e_vec
 
 
-def gen_Dij(atoms):
-  e_vec=gen_e_vec(atoms)
+def gen_Dij(atoms,mode=0):
+  e_vec=gen_e_vec(atoms,mode)
   vec_basis=e_vec
   Dij=[]
   symbols=[]
@@ -121,11 +127,22 @@ def gen_Dij(atoms):
   return Dij,symbols,e_vec
 
 def score_the_similarity(atomsa,atomsb):
-  Dija,symbolsa,e_vec_a=gen_Dij(atomsa)
-  Dijb,symbolsb,e_vec_b=gen_Dij(atomsb)
-  score=score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb)
+  mode_scores=[]
+  for mode1 in range(3):
+    for mode2 in range(3):
+      Dija,symbolsa,e_vec_a=gen_Dij(atomsa,mode1)
+      Dijb,symbolsb,e_vec_b=gen_Dij(atomsb,mode2)
+      score=score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb)
+      mode_scores=np.append(mode_scores,[mode1,mode2,score])
+  mode_scores=mode_scores.reshape(-1,3)
+  mode_scores=mode_scores[np.argsort(mode_scores[:,2])]
+  score=mode_scores[0,2]
+  #print("mode_scores")
+  #print(mode_scores)
+  mode_of_a=mode_scores[0,0].astype('int64')
+  mode_of_b=mode_scores[0,1].astype('int64')
 
-  return score
+  return score,mode_of_a,mode_of_b
 
 
 def score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb):
@@ -161,9 +178,13 @@ def score_the_similarity_detailed(Dija,symbolsa,Dijb,symbolsb):
 
 
 
-def merge_based_on_individual_similar_part(atomsa,atomsa_nl,atomsb,atomsb_nl):
-  e_vec_a=gen_e_vec(atomsa_nl)
-  e_vec_b=gen_e_vec(atomsb_nl)
+def merge_based_on_individual_similar_part_no_del_atomsb_nl(atomsa,atomsa_nl,atomsb,atomsb_nl,mode_of_a=0,mode_of_b=0):
+  #score,mode_of_a,mode_of_b=score_the_similarity(atomsa_nl,atomsb_nl)
+  print("merging")
+  print("mode_of_a,mode_of_b")
+  print(mode_of_a,mode_of_b)
+  e_vec_a=gen_e_vec(atomsa_nl,mode_of_a)
+  e_vec_b=gen_e_vec(atomsb_nl,mode_of_b)
 
   impointb=atomsb_nl.get_positions()[0]
   impoint_ref=atomsa_nl.get_positions()[0]
@@ -173,6 +194,36 @@ def merge_based_on_individual_similar_part(atomsa,atomsa_nl,atomsb,atomsb_nl):
 
   return new_atoms
 
+def merge_based_on_individual_similar_part(atomsa,atomsa_nl,atomsb,atomsb_nl,mode_of_a=0,mode_of_b=0,del_cutoff=0.1):
+  #score,mode_of_a,mode_of_b=score_the_similarity(atomsa_nl,atomsb_nl)
+  #print("merging")
+  print("mode_of_a,mode_of_b")
+  print(mode_of_a,mode_of_b)
+  e_vec_a=gen_e_vec(atomsa_nl,mode_of_a)
+  e_vec_b=gen_e_vec(atomsb_nl,mode_of_b)
+
+  impointb=atomsb_nl.get_positions()[0]
+  impoint_ref=atomsa_nl.get_positions()[0]
+  e_vec_ref=e_vec_a
+  rotrance_atomsb=rotrance_atoms_to_ref(atomsb,impointb,impoint_ref,e_vec_b,e_vec_ref)
+  new_atoms=merge_atoms(atomsa,rotrance_atomsb)
+  get_duplicate_atoms(new_atoms, del_cutoff, delete=True)
+
+  return new_atoms
+
+
+#def substract_atoms(atomsa,atomsb):
+#  for atmb_id in range(len(atomsb)):
+#    A=[]
+#    for atma_id in range(len(atomsa)):
+#      dis=np.linalg.norm(atomsa.get_positions()[atma_id]-atomsb.get_positions()[atmb_id])
+#      A=np.append(A,[atma_id,dis])
+#    A=A.reshape(-1,2)
+#    A=A[np.argsort(A[:,1])]
+#    del_atm_id=A[0,0]      
+
+
+  return new_atoms
 
 def merge_atoms(atomsa,atomsb):
   symbolesa=atomsa.get_chemical_symbols()
@@ -181,9 +232,9 @@ def merge_atoms(atomsa,atomsb):
 
   positions=np.append(atomsa.get_positions(),atomsb.get_positions())
   positions=positions.reshape(-1,3)
-  atoms=Atoms(symboles,positions,cell=atomsa.get_cell(),pbc=True)
+  new_atoms=Atoms(symboles,positions,cell=atomsa.get_cell(),pbc=True)
 
-  return atoms
+  return new_atoms
 
 
 
@@ -222,26 +273,73 @@ def switch_symbol_to_HHeli(atoms):
     if symbols[i]=='H':
       symbols_switch.append('Li')
     if symbols[i]=='O':
-      symbols_switch.append('S')
+      symbols_switch.append('Li')
     if symbols[i]=='C':
-      symbols_switch.append('Si')
+      symbols_switch.append('Li')
     if symbols[i]=='Co':
-      symbols_switch.append('Fe')
+      symbols_switch.append('Li')
     if symbols[i]=='N':
-      symbols_switch.append('P')
+      symbols_switch.append('Li')
     if symbols[i]=='Bi':
-      symbols_switch.append('Sn')
-  new_atoms=atoms
-  new_atoms.set_chemical_symbols(symbols_switch)
+      symbols_switch.append('Li')
+  positions=atoms.get_positions()
+  new_atoms=Atoms(symbols_switch,positions,cell=atoms.get_cell(),pbc=True)
+  #new_atoms.set_chemical_symbols(symbols_switch)
   return new_atoms
 
 def get_the_max_dis_in_atoms(atoms):
   A=[]
   for atm_id in range(len(atoms)):
     for atm_jd in range(atm_id+1,len(atoms)):
-      A.append(atoms.get_distance(atm_id,atm_jd))
+      A.append(atoms.get_distance(atm_id,atm_jd,mic=True))
   max_dis=max(A)
   return max_dis
 
+def get_the_min_dis_in_atoms(atoms):
+  A=[]
+  for atm_id in range(len(atoms)):
+    for atm_jd in range(atm_id+1,len(atoms)):
+      A.append(atoms.get_distance(atm_id,atm_jd,mic=True))
+  min_dis=min(A)
+  return min_dis
+
+def get_the_min_dis_in_atoms_for_atm_id(atoms,atm_id):
+  A=[]
+  for atm_jd in range(len(atoms)):
+    if atm_jd!=atm_id:
+      A.append(atoms.get_distance(atm_id,atm_jd,mic=True))
+  min_dis=min(A)
+  return min_dis
 
 
+def get_center_atm_id(atoms):
+  center_cor=np.mean(atoms.get_positions())
+  A=[]
+  for atm_id in range(len(atoms)):
+   dis=np.linalg.norm(atoms.get_positions()[atm_id]-center_cor)
+   A=np.append(A,[atm_id,dis])
+  A=A.reshape(-1,2)
+  A=A[np.argsort(A[:,1])]
+  center_atm_id=A[0,0]
+  return center_atm_id
+
+
+def check_whether_surface_site(atoms):
+  #center_cor=np.mean(atoms.get_positions()) 
+  char_vec=0
+  for atm_id in range(2,len(atoms)):
+    R_vec=atoms.get_distance(0,atm_id,mic=True,vector=True)
+    char_vec=char_vec+R_vec
+  char_vec=char_vec/(len(atoms)-2)
+  print(char_vec)
+  #char_vec=center_cor-atoms.get_positions()[0]
+  result="true"
+  for atm_id in range(2,len(atoms)):
+    test_vec=atoms.get_positions()[atm_id]-atoms.get_positions()[0]
+    cos_value=np.dot(char_vec,test_vec)/np.linalg.norm(char_vec)/np.linalg.norm(test_vec)
+    if cos_value<-0.5:
+      result="false"
+      break
+
+
+  return result
